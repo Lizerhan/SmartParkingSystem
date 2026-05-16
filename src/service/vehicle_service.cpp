@@ -105,7 +105,8 @@ bool VehicleService::checkOut(const std::string& plate, int userId, double& fee,
         quote(mysql, cfg.parking_name);
     mysql_query(mysql, sql.c_str());
 
-    sql = "SELECT id,license_plate,check_in_time,check_out_time,fee,location,billing_type,exit_deadline FROM CAR_RECORD WHERE id=" +
+    sql = "SELECT id,license_plate,check_in_time,check_out_time,fee,location,billing_type,"
+        "'' AS duration,COALESCE(exit_deadline,'') FROM CAR_RECORD WHERE id=" +
         std::to_string(rec_id);
     if (mysql_query(mysql, sql.c_str()) == 0) {
         res = mysql_store_result(mysql);
@@ -117,6 +118,8 @@ bool VehicleService::checkOut(const std::string& plate, int userId, double& fee,
             record.fee = row[4] ? std::stod(row[4]) : 0.0;
             record.location = row[5] ? row[5] : "";
             record.billing_type = row[6] ? row[6] : "standard";
+            record.duration = row[7] ? row[7] : "";
+            record.exit_deadline = row[8] ? row[8] : "";
             mysql_free_result(res);
         }
     }
@@ -130,11 +133,27 @@ std::vector<CarRecord> VehicleService::queryRecords(const std::string& plate, co
     if (!conn) return {};
     MYSQL* mysql = conn->get();
 
-    std::string sql = "SELECT id,license_plate,check_in_time,check_out_time,fee,location,billing_type FROM CAR_RECORD WHERE 1=1";
+    std::string sql = "SELECT id,license_plate,check_in_time,check_out_time,fee,location,billing_type,"
+        "CASE WHEN check_out_time IS NULL THEN CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE,check_in_time,NOW())/60),'小时',MOD(TIMESTAMPDIFF(MINUTE,check_in_time,NOW()),60),'分') ELSE '' END AS duration,"
+        "COALESCE(exit_deadline,'') FROM CAR_RECORD WHERE 1=1";
     if (!plate.empty()) sql += " AND license_plate=" + quote(mysql, plate);
     if (!start_date.empty()) sql += " AND check_in_time >= " + quote(mysql, start_date + " 00:00:00");
     if (!end_date.empty()) sql += " AND check_in_time <= " + quote(mysql, end_date + " 23:59:59");
     sql += " ORDER BY check_in_time DESC LIMIT 500";
+
+    return list(sql);
+}
+
+std::vector<CarRecord> VehicleService::getParkedVehicles(const std::string& plate_filter) {
+    auto conn = getConnection();
+    if (!conn) return {};
+    MYSQL* mysql = conn->get();
+
+    std::string sql = "SELECT id,license_plate,check_in_time,check_out_time,fee,location,billing_type,"
+        "CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE,check_in_time,NOW())/60),'小时',MOD(TIMESTAMPDIFF(MINUTE,check_in_time,NOW()),60),'分') AS duration,"
+        "COALESCE(exit_deadline,'') FROM CAR_RECORD WHERE check_out_time IS NULL";
+    if (!plate_filter.empty()) sql += " AND license_plate LIKE " + quote(mysql, "%" + plate_filter + "%");
+    sql += " ORDER BY check_in_time DESC";
 
     return list(sql);
 }
@@ -152,6 +171,8 @@ CarRecord VehicleService::mapRow(MYSQL_ROW row) {
     r.fee = row[4] ? std::stod(row[4]) : 0.0;
     r.location = row[5] ? row[5] : "";
     r.billing_type = row[6] ? row[6] : "standard";
+    r.duration = row[7] ? row[7] : "";
+    r.exit_deadline = row[8] ? row[8] : "";
     return r;
 }
 

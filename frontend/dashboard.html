@@ -102,6 +102,34 @@
                         </div>
                     </div>
 
+                    <!-- Parked Vehicles Card (for operators/admins) -->
+                    <div class="card" id="card-parked-vehicles">
+                        <div class="card-title">在场车辆</div>
+                        <div id="parked-alert"></div>
+                        <div class="form-group" style="margin-bottom:10px">
+                            <div class="plate-input-group">
+                                <input type="text" id="parked-search-input" class="form-control" placeholder="搜索车牌号..." maxlength="10">
+                                <button class="btn btn-primary btn-sm" onclick="loadParkedVehicles()">搜索</button>
+                                <button class="btn btn-default btn-sm" onclick="document.getElementById('parked-search-input').value='';loadParkedVehicles()">重置</button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>车牌号</th>
+                                        <th>入库时间</th>
+                                        <th>已停时长</th>
+                                        <th style="width:80px">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="parked-vehicles-list">
+                                    <tr><td colspan="4" class="loading">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- User: Balance + Pass Plans -->
                     <div class="card" id="card-balance">
                         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">

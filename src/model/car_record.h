@@ -11,6 +11,8 @@ public:
     double fee = 0.0;
     std::string location;
     std::string billing_type = "standard";
+    std::string duration;
+    std::string exit_deadline;
 
     int getId() const override { return id; }
     void setId(int id_) override { id = id_; }
@@ -25,6 +27,8 @@ public:
         j["fee"] = fee;
         j["location"] = location;
         j["billing_type"] = billing_type;
+        j["duration"] = duration;
+        j["exit_deadline"] = exit_deadline;
         return j;
     }
 };

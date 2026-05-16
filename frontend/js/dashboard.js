@@ -31,6 +31,7 @@ function applyPermUI() {
     document.getElementById('card-settings').style.display = hasPerm('parking.settings') ? '' : 'none';
     // Bulletin is visible to everyone
     document.getElementById('card-plate-recognition').style.display = hasPerm('plate.recognize') ? '' : 'none';
+    document.getElementById('card-parked-vehicles').style.display = hasPerm('vehicle.query') ? '' : 'none';
 }
 
 function initPieChart() {
@@ -103,6 +104,37 @@ async function loadRecentRecords() {
             <td>${formatFee(r.fee)}</td>
             <td>${r.check_out_time ? '<span class="badge badge-success">已出库</span>' : '<span class="badge badge-primary">停放中</span>'}</td>
         </tr>`).join('');
+}
+
+async function loadParkedVehicles() {
+    const tbody = document.getElementById('parked-vehicles-list');
+    if (!tbody || !hasPerm('vehicle.query')) return;
+    const plate = document.getElementById('parked-search-input')?.value.trim() || '';
+    const res = await get('/api/vehicle/parked' + (plate ? '?plate=' + encodeURIComponent(plate) : ''));
+    if (!res || !res.ok || !res.data.records || res.data.records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">暂无在场车辆</td></tr>';
+        return;
+    }
+    const canCheckOut = hasPerm('vehicle.checkout');
+    tbody.innerHTML = res.data.records.map(r => `
+        <tr>
+            <td><strong>${escapeHtml(r.license_plate)}</strong></td>
+            <td>${formatDateTime(r.check_in_time)}</td>
+            <td><span style="color:#ff4d4f;font-weight:500">${r.duration || '计算中...'}</span></td>
+            <td>
+                ${canCheckOut
+                    ? `<button class="btn btn-danger btn-xs" onclick="quickCheckOutParked('${r.license_plate}')">出场</button>`
+                    : '<span style="color:#999">-</span>'}
+            </td>
+        </tr>`).join('');
+}
+
+async function quickCheckOutParked(plate) {
+    const res = await post('/api/vehicle/checkout', { license_plate: plate });
+    if (res && res.ok) {
+        showSuccess('parked-alert', '车辆 ' + plate + ' 出库成功！费用: ' + formatFee(res.data.fee) + '。请在10分钟内驶离');
+        loadParkedVehicles(); loadStatus(); loadRecentRecords(); loadBalance();
+    } else showError('parked-alert', res?.data?.error || '出库失败');
 }
 
 async function loadBalance() {
@@ -349,6 +381,7 @@ async function confirmRecharge() {
 
 document.getElementById('plate-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') handleCheckIn(); });
 document.getElementById('my-vehicle-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') addMyVehicle(); });
+document.getElementById('parked-search-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadParkedVehicles(); });
 
 // Show my-vehicles card for all authenticated users
 const myVehiclesCard = document.getElementById('card-my-vehicles');
@@ -364,5 +397,7 @@ loadBalance();
 loadPassPlans();
 loadBulletin();
 renderMyVehicles();
+loadParkedVehicles();
 setInterval(() => { loadStatus(); }, 10000);
 setInterval(() => { renderMyVehicles(); }, 30000);
+setInterval(() => { loadParkedVehicles(); }, 15000);

@@ -8,7 +8,5 @@
         "minor": 15,
         "patch": 0
     },
-    "include": [
-        "build/CMakePresets.json"
-    ]
+    "include": []
 }

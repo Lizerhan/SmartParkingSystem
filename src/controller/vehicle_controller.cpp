@@ -61,6 +61,17 @@ void VehicleController::registerRoutes(crow::SimpleApp& app) {
         return crow::response(res);
     });
 
+    CROW_ROUTE(app, "/api/vehicle/parked").methods("GET"_method)([](const crow::request& req) {
+        if (!BaseController::checkPermission(req, Permissions::VEHICLE_QUERY))
+            return BaseController::errorResponse(403, "权限不足");
+        std::string plate = req.url_params.get("plate") ? req.url_params.get("plate") : "";
+        auto records = VehicleService::instance().getParkedVehicles(plate);
+        crow::json::wvalue res;
+        res["records"] = BaseController::toJsonArray(records);
+        res["total"] = (int)records.size();
+        return crow::response(res);
+    });
+
     CROW_ROUTE(app, "/api/vehicle/status").methods("GET"_method)([](const crow::request& req) {
         if (!BaseController::isAuthenticated(req))
             return BaseController::errorResponse(401, "请先登录");
